@@ -3,13 +3,13 @@
 import os
 import json
 from time import sleep
-from functools import wraps
+from functools import wraps, reduce
 from multiprocessing import Process, Lock, Queue
 
 import pandas as pd
 
 from .additional_info import gather_machine_info
-from .monitoring import monitor
+from .monitoring import monitor, process_batch, split_batches
 from .process_machine import process_pc_info
 from .send_data import send_data
 
@@ -32,7 +32,7 @@ def ecocode_decorator(
                 pid = queue.get()
                 lock.release()
 
-                # Start the monitoring
+                # Start the monitoring (gather raw data)
                 monitoring_information = []
                 while True:
                     if queue.empty():
@@ -42,12 +42,19 @@ def ecocode_decorator(
                     else:
                         break
 
-                monit_df = pd.concat(
-                    monitoring_information,
-                    ignore_index=True
+                # Process the data received
+                monitoring_information = map(
+                    split_batches, monitoring_information
                 )
+                monitoring_information = map(
+                    lambda batches: list(map(process_batch, batches)),
+                    monitoring_information
+                )
+
                 all_data = {}
-                all_data['monitoring'] = monit_df.to_dict("records")
+                all_data['monitoring'] = list(reduce(
+                    lambda x, y: x+y, monitoring_information
+                ))
                 all_data['machine'] = process_pc_info(
                     gather_machine_info()
                 )
@@ -96,17 +103,3 @@ def ecocode_decorator(
 
         return ecocode_function
     return ecocode_wrapper
-
-
-@ecocode_decorator(country="FR")
-def test_function(message: str, duration: int = 2):
-    """Test function."""
-    print('Entering the test function: ', message)
-    print('time: ', duration, "s")
-    sleep(duration)
-    print('Ending the test function')
-    return message
-
-
-if __name__ == "__main__":
-    test_function("Hello !", 10)

@@ -6,7 +6,8 @@ from .settings import settings
 
 def send_data(data):
     """Send the data to the server."""
-
+    with open('./data.json', "w") as _:
+        json.dump(data, _, indent=2)
     try:
 
         requests.post(

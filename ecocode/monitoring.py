@@ -26,12 +26,7 @@ def monitor(
         capture_output=True
     ).stdout
 
-    batches = split_batches(output)
-
-    batches_info = list(map(process_batch, batches))
-
-    batches_info_df = pd.DataFrame.from_records(batches_info)
-    return batches_info_df
+    return output
 
 
 def split_batches(raw_text: str):
@@ -55,6 +50,7 @@ def process_batch(batch: List[str]):
             lambda x: x.decode(),
             filter(lambda x: len(x) > 0, infos)
         ))
+        # check if time same
         process_info.append(
             dict(zip(
                 settings.COLUMNS,
